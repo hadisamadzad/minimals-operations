@@ -1,5 +1,5 @@
 name: 🚀 Build, Test & Publish
- 
+
 on:
   push:
     branches:
@@ -33,16 +33,16 @@ jobs:
             10.0.x
 
       - name: 📦 Restore dependencies
-        run: dotnet restore Damas.Operations.slnx
+        run: dotnet restore Minimals.Operations.slnx
 
       - name: 🏗️ Build
-        run: dotnet build Damas.Operations.slnx --configuration Release --no-restore
+        run: dotnet build Minimals.Operations.slnx --configuration Release --no-restore
 
       - name: 🧪 Test
-        run: dotnet test Damas.Operations.slnx --configuration Release --no-build --verbosity normal
+        run: dotnet test Minimals.Operations.slnx --configuration Release --no-build --verbosity normal
 
       - name: 📦 Pack NuGet package
-        run: dotnet pack src/Damas.Operations.csproj --configuration Release --no-build --output ./artifacts
+        run: dotnet pack src/Minimals.Operations.csproj --configuration Release --no-build --output ./artifacts
 
       - name: 🚀 Push to NuGet.org
         run: dotnet nuget push ./artifacts/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate

@@ -1,4 +1,4 @@
-namespace Damas.Operations;
+namespace Minimals.Operations;
 
 /// <summary>
 /// Marker interface for operation commands.

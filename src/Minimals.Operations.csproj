@@ -8,7 +8,7 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <!-- NuGet Package Properties -->
     <PackageId>Minimals.Operations</PackageId>
-    <Version>1.0.0</Version>
+    <Version>1.0.1-preview-1</Version>
     <Authors>Hadi Samadzad</Authors>
     <Company>Hadi Samadzad</Company>
     <Description>A lightweight, type-safe operation result pattern implementation for .NET. Provides structured error handling, operation status tracking, and dependency injection support for implementing use cases in clean architecture applications.</Description>

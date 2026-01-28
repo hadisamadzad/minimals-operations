@@ -1,4 +1,4 @@
-namespace Damas.Operations.Tests;
+namespace Minimals.Operations.Tests;
 
 public class OperationResultTests
 {

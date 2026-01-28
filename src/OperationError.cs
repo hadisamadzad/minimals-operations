@@ -1,4 +1,4 @@
-namespace Damas.Operations;
+namespace Minimals.Operations;
 
 /// <summary>
 /// Represents error information from a failed operation.

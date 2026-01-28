@@ -1,4 +1,6 @@
-# Damas.Operations
+# Minimals.Operations
+
+![Minimals.Operations](icon.png)
 
 A lightweight, type-safe operation result pattern implementation for .NET. Provides structured error handling, operation status tracking, and dependency injection support for implementing use cases in clean architecture applications.
 
@@ -15,7 +17,7 @@ A lightweight, type-safe operation result pattern implementation for .NET. Provi
 ## Installation
 
 ```bash
-dotnet add package Damas.Operations
+dotnet add package Minimals.Operations
 ```
 
 ## Quick Start
@@ -23,7 +25,7 @@ dotnet add package Damas.Operations
 ### 1. Define a Command
 
 ```csharp
-using Damas.Operations;
+using Minimals.Operations;
 
 public record CreateUserCommand(string Email, string Name) : IOperationCommand;
 ```

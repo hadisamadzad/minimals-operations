@@ -1,4 +1,4 @@
-namespace Damas.Operations;
+namespace Minimals.Operations;
 
 /// <summary>
 /// Defines an operation that executes a command and returns a result.
