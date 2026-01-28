@@ -24,7 +24,7 @@ jobs:
         run: |
           dotnet restore
           dotnet build
-          dotnet test Lingopi.slnx --collect:"XPlat Code Coverage" --logger "trx;LogFileName=test_results.trx"
+          dotnet test Operations.slnx --collect:"XPlat Code Coverage" --logger "trx;LogFileName=test_results.trx"
 
       - name: 📊 Generate Coverage Report
         uses: danielpalme/ReportGenerator-GitHub-Action@5.1.12
