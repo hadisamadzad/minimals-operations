@@ -1,6 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Damas.Operations;
+namespace Minimals.Operations;
 
 /// <summary>
 /// Extension methods for registering operations with the dependency injection container.

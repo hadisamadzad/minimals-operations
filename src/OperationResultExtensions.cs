@@ -1,4 +1,4 @@
-namespace Damas.Operations;
+namespace Minimals.Operations;
 
 /// <summary>
 /// Extension methods for working with OperationResult in a functional style.
