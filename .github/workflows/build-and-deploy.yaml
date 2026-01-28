@@ -1,128 +1,56 @@
-name: 🚀 Build & Deploy
+name: 🚀 Build, Test & Publish
 
 on:
   push:
     branches:
       - main
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  #security-checks:
-  #  name: 🛡️ Security Checks
-  #  uses: ./.github/workflows/security-check.yaml
-
-  #quality-checks:
-  #  name: 🚦 Quality Checks
-  #  uses: ./.github/workflows/sonar-quality-check.yaml
-
   unit-tests:
     name: 🧩 Run Unit Tests
     uses: ./.github/workflows/unit-test.yaml
 
-  build-and-deploy:
-    name: 🚀 Deploy to Server - Run ${{ github.run_number }}
+  build-and-publish:
+    name: 📦 Build & Publish NuGet Package
     runs-on: ubuntu-latest
-    environment: Production
     needs: unit-tests
+    if: startsWith(github.ref, 'refs/tags/v')
     steps:
-      - name: 🔑 SSH into Server for Preparation
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            cd /home/${{ secrets.SERVER_USER }}/lingopi
-            rm -rf ./api
-            echo "Cleared the deployment directory!"
-
       - name: 📥 Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: 📂 Upload files to the server
-        uses: appleboy/scp-action@master
+      - name: 🔧 Setup .NET
+        uses: actions/setup-dotnet@v4
         with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "./*"  # Send all files
-          target: "/home/${{ secrets.SERVER_USER }}/lingopi/api"
+          dotnet-version: |
+            8.0.x
+            10.0.x
 
-      - name: 🔑 SSH into Server & Deploy
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            cd /home/${{ secrets.SERVER_USER }}/lingopi/api
+      - name: 📦 Restore dependencies
+        run: dotnet restore Operations.slnx
 
-            # Replace the environment variables
-            sed -i 's/{Env}/${{ vars.ENV_NAME }}/g' deploy.sh
+      - name: 🏗️ Build
+        run: dotnet build Operations.slnx --configuration Release --no-restore
 
-            ENV_NAME_LOWER=$(echo "${{ vars.ENV_NAME }}" | tr '[:upper:]' '[:lower:]')
+      - name: 🧪 Test
+        run: dotnet test Operations.slnx --configuration Release --no-build --verbosity normal
 
-            for dir in ./src/*/; do
-              if [ -d "$dir" ]; then # Check if it's a directory
-                echo "Processing directory: $dir"
+      - name: 📦 Pack NuGet package
+        run: dotnet pack src/Operations.csproj --configuration Release --no-build --output ./artifacts
 
-                dir_name=$(basename "$dir") # Extract directory name
+      - name: 🚀 Push to NuGet.org
+        run: dotnet nuget push ./artifacts/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
 
-                if [ -f "$dir/appsettings.json" ]; then # Check if appsettings.json exists in the directory
-                  echo "Updating appsettings.json in $dir"
-
-                  # Shared
-                  sed -i "s/{env}/$ENV_NAME_LOWER/g" "$dir/appsettings.json"
-                  sed -i "s|{datadog_api_key}|${{ secrets.DATADOG_API_KEY }}|g" "$dir/appsettings.json"
-
-                  if [ "$dir_name" == "Lingopi.Gateway" ]; then
-                    sed -i "s|{auth_jwt_issuer}|${{ vars.AUTH_JWT_ISSUER }}|g" "$dir/appsettings.json"
-                    sed -i "s|{auth_jwt_audience}|${{ vars.AUTH_JWT_AUDIENCE }}|g" "$dir/appsettings.json"
-                    sed -i "s|{auth_jwt_access_token_secret_key}|${{ secrets.AUTH_JWT_ACCESS_SECRET }}|g" "$dir/appsettings.json"
-                    sed -i "s|{allowed_origins}|${{ vars.ALLOWED_ORIGINS }}|g" "$dir/appsettings.json"
-                  fi
-
-                  if [ "$dir_name" == "Lingopi.Identity" ]; then
-                    sed -i "s|{mongodb_connection_string}|${{ secrets.MONGODB_CONNECTION_STRING }}|g" "$dir/appsettings.json"
-                    sed -i "s|{mongodb_database_name}|${{ vars.MONGODB_DATABASE_NAME }}|g" "$dir/appsettings.json"
-                    sed -i "s|{auth_jwt_issuer}|${{ vars.AUTH_JWT_ISSUER }}|g" "$dir/appsettings.json"
-                    sed -i "s|{auth_jwt_audience}|${{ vars.AUTH_JWT_AUDIENCE }}|g" "$dir/appsettings.json"
-                    sed -i "s|{auth_jwt_access_token_secret_key}|${{ secrets.AUTH_JWT_ACCESS_SECRET }}|g" "$dir/appsettings.json"
-                    sed -i "s|{auth_jwt_refresh_token_secret_key}|${{ secrets.AUTH_JWT_REFRESH_SECRET }}|g" "$dir/appsettings.json"
-                    sed -i "s|{auth_access_token_lifetime}|${{ vars.AUTH_JWT_ACCESS_LIFETIME }}|g" "$dir/appsettings.json"
-                    sed -i "s|{auth_refresh_token_lifetime}|${{ vars.AUTH_JWT_REFRESH_LIFETIME }}|g" "$dir/appsettings.json"
-                    sed -i "s|"{failed_login_limit}"|${{ vars.AUTH_LOCKOUT_LIMIT }}|g" "$dir/appsettings.json"
-                    sed -i "s|{auth_lockout_duration}|${{ vars.AUTH_LOCKOUT_DURATION }}|g" "$dir/appsettings.json"
-                    sed -i "s|{password_reset_encryption_key}|${{ secrets.PASSWORD_RESET_ENCRYPTION_KEY }}|g" "$dir/appsettings.json"
-                  fi
-
-                  if [ "$dir_name" == "Lingopi.Lingo" ]; then
-                    sed -i "s|{mongodb_connection_string}|${{ secrets.MONGODB_CONNECTION_STRING }}|g" "$dir/appsettings.json"
-                    sed -i "s|{mongodb_database_name}|${{ vars.MONGODB_DATABASE_NAME }}|g" "$dir/appsettings.json"
-                  fi
-
-                else
-                  echo "appsettings.json not found in $dir"
-                fi
-              fi
-            done
-
-            chmod +x deploy.sh
-            sudo ./deploy.sh
-
-      - name: 🏥 Verify Deployment
+      - name: ✅ Publish Complete
         run: |
-          # Wait for container to be healthy
-          for i in {1..30}; do
-            if curl -sSf ${{ vars.HEALTH_CHECK_URL }}; then
-              echo "✅ Application is healthy"
-              exit 0
-            fi
-            echo "Waiting for application to become healthy..."
-            sleep 10
-          done
-          echo "❌ Application health check failed"
-          exit 1
+          echo "✅ Package published successfully to NuGet.org"
+          echo "📦 Version: ${GITHUB_REF#refs/tags/}"
+
