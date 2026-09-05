@@ -1,9 +1,7 @@
 <Solution>
-  <Configurations>
-    <Platform Name="Any CPU" />
-  </Configurations>
   <Folder Name="/src/">
     <Project Path="src/Minimals.Operations.csproj" />
+    <Project Path="src/Minimals.Operations.Generators/Minimals.Operations.Generators.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Minimals.Operations.Tests.csproj" />
