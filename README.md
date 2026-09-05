@@ -1,4 +1,5 @@
 # Minimals.Operations
+
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=hadisamadzad_operations&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=hadisamadzad_operations)
 [![🛡️ Security Checks](https://github.com/hadisamadzad/minimals-operations/actions/workflows/security-check.yaml/badge.svg)](https://github.com/hadisamadzad/minimals-operations/actions/workflows/security-check.yaml)
 [![🧩 Run Unit Tests](https://github.com/hadisamadzad/minimals-operations/actions/workflows/unit-test.yaml/badge.svg)](https://github.com/hadisamadzad/minimals-operations/actions/workflows/unit-test.yaml)
@@ -16,7 +17,7 @@ A lightweight, type-safe operation result pattern implementation for .NET. Provi
 - ✅ **Type-safe result pattern** - No more exception-driven control flow
 - ✅ **Rich status information** - Distinguish between validation errors, not found, unauthorized, and more
 - ✅ **Functional composition** - Map, Bind, and Match methods for elegant result handling
-- ✅ **Dependency injection support** - Auto-register all operations with one line
+- ✅ **Source-generated mediator** - Register commands and event operations at compile time with lazy resolution
 - ✅ **Clean architecture ready** - Perfect for implementing use cases and operations
 - ✅ **Fully documented** - Comprehensive XML documentation for all APIs
 - ✅ **Zero runtime dependencies** - Only requires `Microsoft.Extensions.DependencyInjection.Abstractions`
@@ -24,7 +25,7 @@ A lightweight, type-safe operation result pattern implementation for .NET. Provi
 ## Installation
 
 ```bash
-dotnet add package Minimals.Operations
+dotnet add package Minimals.Operations --version 2.0.0
 ```
 
 ## Quick Start
@@ -34,7 +35,7 @@ dotnet add package Minimals.Operations
 ```csharp
 using Minimals.Operations;
 
-public record CreateUserCommand(string Email, string Name) : IOperationCommand;
+public record CreateUserCommand(string Email, string Name) : IOperationCommand<User>;
 ```
 
 ### 2. Implement an Operation
@@ -75,30 +76,35 @@ public class CreateUserOperation : IOperation<CreateUserCommand, User>
 }
 ```
 
-### 3. Register Operations
+### 3. Register the Mediator
 
 ```csharp
 // In Program.cs or Startup.cs
-services.AddOperations(); // Auto-discovers and registers all IOperation implementations
+services.AddOperations();
 ```
+
+The v2 package includes its Roslyn analyzer automatically. It discovers typed
+`IOperationCommand<TResult>` operations and `IOperation<TEvent>` event operations at compile time,
+registers them as transient services, and generates a scoped mediator. Each operation is resolved
+only when its command or event is first executed within the current dependency-injection scope.
 
 ### 4. Use Operations
 
 ```csharp
 public class UserController : ControllerBase
 {
-    private readonly IOperation<CreateUserCommand, User> _createUserOperation;
+    private readonly IOperationMediator _operations;
 
-    public UserController(IOperation<CreateUserCommand, User> createUserOperation)
+    public UserController(IOperationMediator operations)
     {
-        _createUserOperation = createUserOperation;
+        _operations = operations;
     }
 
     [HttpPost]
     public async Task<IActionResult> CreateUser(CreateUserRequest request)
     {
-        var command = new CreateUserCommand(request.Email, request.Name);
-        var result = await _createUserOperation.ExecuteAsync(command);
+        var result = await _operations.ExecuteAsync(
+            new CreateUserCommand(request.Email, request.Name));
 
         return result.Match(
             onSuccess: user => Ok(user),
@@ -113,6 +119,37 @@ public class UserController : ControllerBase
     }
 }
 ```
+
+### Publishing Events
+
+Events implement `IOperationEvent`, and one or more event operations implement
+`IOperation<TEvent>`:
+
+```csharp
+public sealed record UserCreatedEvent(Guid UserId) : IOperationEvent;
+
+public sealed class SendWelcomeEmailOperation
+    : IOperation<UserCreatedEvent>
+{
+    public Task ExecuteAsync(
+        UserCreatedEvent @event,
+        CancellationToken? cancellation = null)
+    {
+        // Send the welcome email.
+        return Task.CompletedTask;
+    }
+}
+```
+
+Publish the event through the same mediator:
+
+```csharp
+await _operations.PublishAsync(
+    new UserCreatedEvent(user.Id),
+    cancellationToken);
+```
+
+All generated event operations for the event type are invoked sequentially in registration order.
 
 ## Operation Statuses
 
@@ -272,6 +309,3 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## Author
 
 Hadi Samadzad
-
-
-
